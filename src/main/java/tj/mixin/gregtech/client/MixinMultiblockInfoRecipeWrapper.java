@@ -8,7 +8,6 @@ import gregtech.api.render.scene.WorldSceneRenderer;
 import gregtech.integration.jei.multiblock.MultiblockInfoPage;
 import gregtech.integration.jei.multiblock.MultiblockInfoRecipeWrapper;
 import gregtech.integration.jei.multiblock.channel.ChannelState;
-import gregtech.integration.jei.multiblock.channel.StructureChannels;
 import mezz.jei.api.IGuiHelper;
 import mezz.jei.api.gui.IDrawable;
 import mezz.jei.gui.recipes.RecipeLayout;
@@ -86,6 +85,9 @@ public abstract class MixinMultiblockInfoRecipeWrapper {
     @Shadow
     private WorldSceneRenderer renderer;
 
+    @Shadow
+    protected abstract void applyChannelState(int index);
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void init(MultiblockInfoPage infoPage, CallbackInfo ci) {
         if (infoPage.getController() instanceof IJEIExtentSync) {
@@ -140,13 +142,16 @@ public abstract class MixinMultiblockInfoRecipeWrapper {
         int minIndex = infoPage.getController().getMinTier();
         int maxIndex = 14;
         int newIndex = Math.max(minIndex, Math.min(maxIndex, this.voltageIndex + amount));
-        if (newIndex == this.voltageIndex) return;
+        if (newIndex == this.voltageIndex) {
+            return;
+        }
+
         this.voltageIndex = newIndex;
         this.buttonVoltage.displayString = TJValues.VCC[newIndex] + GAValues.VN[newIndex];
 
-        for (StructureChannels ch : StructureChannels.values()) {
-            channelState.set(ch, newIndex);
-        }
+
+        applyChannelState(voltageIndex);
+
         this.rebuildScene();
         this.triggerStructureCheck(this.renderer.world);
     }
