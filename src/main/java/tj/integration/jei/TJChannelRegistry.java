@@ -16,7 +16,7 @@ public class TJChannelRegistry {
         CRAFTER_HATCH.registerResolver(context -> PlaceholderType.mteHolder(
                 TJMetaTileEntities.CRAFTER_HATCHES[PlaceholderType.clampIndex(
                         context.getTier(Channel.VOLTAGE), 1,  TJMetaTileEntities.CRAFTER_HATCHES.length)],
-                context.facing)
+                context.facing), Channel.VOLTAGE
         );
 
     }

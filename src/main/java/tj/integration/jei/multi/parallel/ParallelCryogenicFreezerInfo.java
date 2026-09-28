@@ -42,7 +42,8 @@ public class ParallelCryogenicFreezerInfo extends TJMultiblockInfoPage implement
         for (int layer = 0; layer < extent; layer++) {
             String entityS = layer == extent - 1 ? "~ISO~" : "~CCC~";
             String energyH = layer == extent - 1 ? "~CEM~" : "~CCC~";
-            builder.aisle("~CCC~", "CCCCC", "CCCCC", "CCCCC", "~CCC~");
+            String centerRow = layer == 0 ? "CCCCC" : "CCPCC";
+            builder.aisle("~CCC~", "CCCCC", centerRow, "CCCCC", "~CCC~");
             builder.aisle(entityS, "C#P#C", "CPPPC", "C#P#C", energyH);
         }
         return builder.aisle("~iCo~", "CCCCC", "CCCCC", "CCCCC", "~CCC~")

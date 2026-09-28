@@ -88,6 +88,10 @@ public abstract class MixinMultiblockInfoRecipeWrapper {
     @Shadow
     protected abstract void applyChannelState(int index);
 
+    @Shadow
+    protected abstract int getMaxVoltageIndex();
+
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void init(MultiblockInfoPage infoPage, CallbackInfo ci) {
         if (infoPage.getController() instanceof IJEIExtentSync) {
@@ -140,7 +144,7 @@ public abstract class MixinMultiblockInfoRecipeWrapper {
     @Unique
     private void switchVoltage(int amount) {
         int minIndex = infoPage.getController().getMinTier();
-        int maxIndex = 14;
+        int maxIndex = getMaxVoltageIndex();
         int newIndex = Math.max(minIndex, Math.min(maxIndex, this.voltageIndex + amount));
         if (newIndex == this.voltageIndex) {
             return;

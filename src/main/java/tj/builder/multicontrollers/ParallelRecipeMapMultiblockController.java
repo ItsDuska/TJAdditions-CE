@@ -76,7 +76,11 @@ public abstract class ParallelRecipeMapMultiblockController extends TJMultiblock
     protected long maxVoltage;
 
     public ParallelRecipeMapMultiblockController(ResourceLocation metaTileEntityId, RecipeMap<?>... recipeMaps) {
-        super(metaTileEntityId);
+        this(metaTileEntityId,1, 1, 0, 14, recipeMaps);
+    }
+
+    public ParallelRecipeMapMultiblockController(ResourceLocation metaTileEntityId, int minExtent, int maxExtent, int minTier, int maxTier, RecipeMap<?>... recipeMaps) {
+        super(metaTileEntityId, minExtent, maxExtent, minTier, maxTier);
         this.recipeMaps = recipeMaps;
         this.recipeLogic.setActiveConsumer((active, i) -> this.activeDate = active ? Instant.now() : null);
         this.recipeLogic.setProblemConsumer((problem, i)-> this.activeDate = null);
@@ -607,6 +611,8 @@ public abstract class ParallelRecipeMapMultiblockController extends TJMultiblock
     @Override
     public int getJEIPreviewLayer() {
         return (parallelLayer + getExtentStep() - 1) / getExtentStep();
+    }
+
     @SideOnly(Side.CLIENT)
     public SoundEvent getSound(){
         return this.getRecipeMap().getSound();

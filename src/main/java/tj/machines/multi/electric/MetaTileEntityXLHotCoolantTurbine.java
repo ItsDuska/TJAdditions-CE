@@ -652,6 +652,8 @@ public class MetaTileEntityXLHotCoolantTurbine extends MetaTileEntityHotCoolantT
     @Override
     public int getJEIPreviewLayer() {
         return this.parallels;
+    }
+
     @Override
     @SideOnly(Side.CLIENT)
     public boolean shouldPlaySound() {

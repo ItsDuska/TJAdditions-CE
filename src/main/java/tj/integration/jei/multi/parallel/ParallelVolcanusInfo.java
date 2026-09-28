@@ -47,7 +47,7 @@ public class ParallelVolcanusInfo extends TJMultiblockInfoPage implements IParal
         }
         return builder.aisle("IiSOo", "CCCCC", "CCCCC", "CCCCC", "CCEMC").where('S', this.getController(), WEST)
             .where('C', GAMetaBlocks.METAL_CASING_1.getState(MetalCasing1.CasingType.HASTELLOY_N))
-            .where('c', this.getCoils(0))
+            .where('c', ChannelRegistry.COIL, this.getCoils(0))
             .where('P', MetaBlocks.BOILER_CASING.getState(BlockBoilerCasing.BoilerCasingType.TUNGSTENSTEEL_PIPE))
             .where('M', GATileEntities.MAINTENANCE_HATCH[0], EAST)
             .where('E', ChannelRegistry.ENERGY_INPUT_HATCH, this.getEnergyHatch(0, false), EAST)

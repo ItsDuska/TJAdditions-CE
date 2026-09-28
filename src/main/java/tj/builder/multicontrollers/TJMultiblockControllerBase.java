@@ -120,33 +120,37 @@ public abstract class TJMultiblockControllerBase extends MultiblockControllerBas
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, int minExtent, int maxExtent) {
-        this(metaTileEntityId, true, true,minExtent,maxExtent,0);
+        this(metaTileEntityId, true, true,minExtent,maxExtent,0,14);
+    }
+
+    public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, int minExtent, int maxExtent, int minTier, int maxTier) {
+        this(metaTileEntityId, true, true,minExtent,maxExtent,minTier,maxTier);
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance) {
-        this(metaTileEntityId, hasMaintenance, true,1,1,0);
+        this(metaTileEntityId, hasMaintenance, true,1,1,0,14);
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance, boolean hasDistinct) {
-        this(metaTileEntityId, hasMaintenance, hasDistinct,1,1,0);
+        this(metaTileEntityId, hasMaintenance, hasDistinct,1,1,0,14);
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, int minExtent, int maxExtent, int minTier) {
-        this(metaTileEntityId, true, true, minExtent, maxExtent, minTier);
+        this(metaTileEntityId, true, true, minExtent, maxExtent, minTier,14);
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance, int minExtent, int maxExtent, int minTier) {
-        this(metaTileEntityId, hasMaintenance, true, minExtent, maxExtent, minTier);
+        this(metaTileEntityId, hasMaintenance, true, minExtent, maxExtent, minTier,14);
     }
 
     public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance, boolean hasDistinct, int minExtent, int maxExtent) {
-        this(metaTileEntityId, hasMaintenance, hasDistinct,minExtent,maxExtent,0);
+        this(metaTileEntityId, hasMaintenance, hasDistinct,minExtent,maxExtent,0,14);
     }
 
 
 
-    public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance, boolean hasDistinct, int minExtent, int maxExtent, int minTier) {
-        super(metaTileEntityId,minExtent,maxExtent,minTier);
+    public TJMultiblockControllerBase(ResourceLocation metaTileEntityId, boolean hasMaintenance, boolean hasDistinct, int minExtent, int maxExtent, int minTier, int maxTier) {
+        super(metaTileEntityId,minExtent,maxExtent,minTier,maxTier);
         this.hasMuffler = false;
         this.hasDistinct = hasDistinct;
         this.hasMaintenance = hasMaintenance;
