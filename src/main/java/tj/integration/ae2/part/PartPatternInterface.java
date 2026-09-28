@@ -44,19 +44,16 @@ public class PartPatternInterface extends PartInterface implements ITileEntityUI
 
     public PartPatternInterface(ItemStack is) {
         super(is);
-        ObfuscationReflectionHelper.setPrivateValue(PartInterface.class, this, new DualitySuperInterface(this.getProxy(), this, 40, 36, 288), "duality");
+        ObfuscationReflectionHelper.setPrivateValue(PartInterface.class, this, new DualitySuperInterface(this.getProxy(), this, 10, 4, 36, 288), "duality");
     }
 
     @Override
     public boolean onPartActivate(EntityPlayer player, EnumHand hand, Vec3d pos) {
         final TileCableBus tileCableBus = (TileCableBus) this.getTile();
-        if (tileCableBus != null) {
-            if (!player.getEntityWorld().isRemote) {
-                TileEntityHolder holder = new TileEntityHolder(tileCableBus);
-                holder.setFacing(this.getSide().getFacing());
-                holder.openUI((EntityPlayerMP) player);
-            }
-            return true;
+        if (tileCableBus != null && !player.getEntityWorld().isRemote) {
+            TileEntityHolder holder = new TileEntityHolder(tileCableBus);
+            holder.setFacing(this.getSide().getFacing());
+            holder.openUI((EntityPlayerMP) player);
         }
         return true;
     }
@@ -142,10 +139,5 @@ public class PartPatternInterface extends PartInterface implements ITileEntityUI
     public void setPriority(String priority, String id) {
         this.getInterfaceDuality().setPriority((int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, Long.parseLong(priority))));
         this.getTile().markDirty();
-    }
-
-    @Override
-    public void setAutoPull(boolean autoPull) {
-        // No such feature
     }
 }

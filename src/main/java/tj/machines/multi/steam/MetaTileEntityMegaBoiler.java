@@ -57,11 +57,13 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import tj.textures.TJTextures;
 import tj.util.Color;
+import tj.util.TJFluidUtils;
 import tj.util.TooltipHelper;
 
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import static gregicadditions.capabilities.GregicAdditionsCapabilities.MAINTENANCE_HATCH;
@@ -74,11 +76,12 @@ import static tj.multiblockpart.TJMultiblockAbility.STEAM_OUTPUT;
 
 public class MetaTileEntityMegaBoiler extends TJMultiblockControllerBase implements IProgressBar, IBoilerHandler {
 
+    public static final FluidStack WATER = Water.getFluid(1);
     private static final MultiblockAbility<?>[] OUTPUT_ABILITIES = {EXPORT_FLUIDS, STEAM_OUTPUT};
     private final MegaBoilerRecipeLogic boilerRecipeLogic = new MegaBoilerRecipeLogic(this);
+    private final MetaTileEntityLargeBoiler.BoilerType boilerType;
     private final Set<BlockPos> activeStates = new HashSet<>();
     private final int parallel;
-    private final MetaTileEntityLargeBoiler.BoilerType boilerType;
 
     public MetaTileEntityMegaBoiler(ResourceLocation metaTileEntityId, MetaTileEntityLargeBoiler.BoilerType boilerType, int parallel) {
         super(metaTileEntityId);
@@ -227,27 +230,7 @@ public class MetaTileEntityMegaBoiler extends TJMultiblockControllerBase impleme
     @SideOnly(Side.CLIENT)
     public void renderMetaTileEntity(CCRenderState renderState, Matrix4 translation, IVertexOperation[] pipeline) {
         super.renderMetaTileEntity(renderState, translation, pipeline);
-        TJTextures.TJ_MULTIBLOCK_WORKABLE_OVERLAY.render(renderState, translation, pipeline, this.frontFacing, this.boilerRecipeLogic.isActive(), this.boilerRecipeLogic.hasProblem(), this.boilerRecipeLogic.isWorkingEnabled());
-    }
-
-    @Override
-    public ICubeRenderer getBaseTexture(IMultiblockPart sourcePart) {
-        if (sourcePart instanceof IMultiblockAbilityPart) {
-            final MultiblockAbility<?> ability = ((IMultiblockAbilityPart<?>) sourcePart).getAbility();
-            if (ability == MultiblockAbility.EXPORT_FLUIDS || ability == STEAM_OUTPUT)
-                return this.boilerType.solidCasingRenderer;
-        }
-        return sourcePart == null ? this.boilerType.solidCasingRenderer : this.boilerRecipeLogic.isActive() ? this.boilerType.firefoxActiveRenderer : this.boilerType.fireboxIdleRenderer;
-    }
-
-    @Override
-    public int getLightValueForPart(IMultiblockPart sourcePart) {
-        if (sourcePart instanceof IMultiblockAbilityPart) {
-            final MultiblockAbility<?> ability = ((IMultiblockAbilityPart<?>) sourcePart).getAbility();
-            if (ability == MultiblockAbility.EXPORT_FLUIDS || ability == STEAM_OUTPUT)
-                return 0;
-        }
-        return sourcePart == null ? 0 : this.boilerRecipeLogic.isActive() ? 15 : 0;
+        TJTextures.TJ_MULTIBLOCK_WORKABLE_OVERLAY.render(renderState, translation, pipeline, this.frontFacing, this.boilerRecipeLogic.isActive(), this.boilerRecipeLogic.isHasProblems(), this.boilerRecipeLogic.isWorkingEnabled());
     }
 
     @Override
@@ -322,15 +305,47 @@ public class MetaTileEntityMegaBoiler extends TJMultiblockControllerBase impleme
     }
 
     @Override
+    public ICubeRenderer getBaseTexture(IMultiblockPart sourcePart) {
+        if (sourcePart instanceof IMultiblockAbilityPart) {
+            final MultiblockAbility<?> ability = ((IMultiblockAbilityPart<?>) sourcePart).getAbility();
+            if (ability == MultiblockAbility.EXPORT_FLUIDS || ability == STEAM_OUTPUT)
+                return this.boilerType.solidCasingRenderer;
+        }
+        return sourcePart == null ? this.boilerType.solidCasingRenderer : this.boilerRecipeLogic.isActive() ? this.boilerType.firefoxActiveRenderer : this.boilerType.fireboxIdleRenderer;
+    }
+
+    @Override
+    public int getLightValueForPart(IMultiblockPart sourcePart) {
+        if (sourcePart instanceof IMultiblockAbilityPart) {
+            final MultiblockAbility<?> ability = ((IMultiblockAbilityPart<?>) sourcePart).getAbility();
+            if (ability == MultiblockAbility.EXPORT_FLUIDS || ability == STEAM_OUTPUT)
+                return 0;
+        }
+        return sourcePart == null ? 0 : this.boilerRecipeLogic.isActive() ? 15 : 0;
+    }
+
+    @Override
     public int[][] getBarMatrix() {
-        return new int[1][1];
+        return new int[][]{new int[1], new int[2]};
     }
 
     @Override
     public void getProgressBars(Queue<UnaryOperator<ProgressBar.ProgressBarBuilder>> bars) {
+        final Supplier<Object[]> waterParam = () -> new Object[]{WATER != null ? WATER.getLocalizedName() : ""};
+        final Supplier<Object[]> lastBurnFluidParam = () -> new Object[]{this.boilerRecipeLogic.getLastBurnFluid() != null ? this.boilerRecipeLogic.getLastBurnFluid().getLocalizedName() : ""};
         bars.add(bar -> bar.setProgress(this.boilerRecipeLogic::heat).setMaxProgress(this.boilerRecipeLogic::maxHeat)
                 .setBarTexture(TJGuiTextures.BAR_RED)
                 .setLocale("tj.multiblock.bars.heat"));
+        bars.add(bar -> bar.setProgress(() -> TJFluidUtils.getFluidAmountFromTanks(WATER, this.importFluidTank))
+                .setMaxProgress(() -> TJFluidUtils.getFluidCapacityFromTanks(WATER, this.importFluidTank))
+                .setLocale("tj.multiblock.bars.fluid")
+                .setFluidStackSupplier(() -> WATER)
+                .setParams(waterParam));
+        bars.add(bar -> bar.setProgress(() -> TJFluidUtils.getFluidAmountFromTanks(this.boilerRecipeLogic.getLastBurnFluid(), this.importFluidTank))
+                .setMaxProgress(() -> TJFluidUtils.getFluidCapacityFromTanks(this.boilerRecipeLogic.getLastBurnFluid(), this.importFluidTank))
+                .setFluidStackSupplier(this.boilerRecipeLogic::getLastBurnFluid)
+                .setLocale("tj.multiblock.bars.fuel")
+                .setParams(lastBurnFluidParam));
     }
 
     @Override
@@ -340,7 +355,7 @@ public class MetaTileEntityMegaBoiler extends TJMultiblockControllerBase impleme
 
     @Override
     public boolean isActive() {
-        return this.boilerRecipeLogic.isActive();
+        return super.isActive() && this.boilerRecipeLogic.isActive();
     }
 
     @Override

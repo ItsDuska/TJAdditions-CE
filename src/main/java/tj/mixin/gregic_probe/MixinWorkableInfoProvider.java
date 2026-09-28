@@ -3,7 +3,6 @@ package tj.mixin.gregic_probe;
 import gregtech.api.capability.IWorkable;
 import mcjty.theoneprobe.api.ElementAlignment;
 import mcjty.theoneprobe.api.IProbeInfo;
-import mcjty.theoneprobe.api.TextStyleClass;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import tj.TJConfig;
-import tj.TJValues;
-import tj.capability.IRecipeInfo;
-import vfyjxf.gregicprobe.config.GregicProbeConfig;
+import tj.integration.theoneprobe.impl.ElementProgressBar;
+import tj.util.Color;
 import vfyjxf.gregicprobe.integration.gregtech.WorkableInforProvider;
 
 
@@ -24,30 +22,12 @@ public abstract class MixinWorkableInfoProvider {
             at = @At("HEAD"), cancellable = true)
     private void injectAddProbeInfo(IWorkable capability, IProbeInfo probeInfo, TileEntity tileEntity, EnumFacing sideHit, CallbackInfo ci) {
         if (!TJConfig.machines.theOneProbeInfoProviderOverrides) return;
-        double currentProgress = capability.getProgress();
-        double maxProgress = capability.getMaxProgress();
-        if (capability.isActive())
-            currentProgress--;
+        final double maxProgress = (double) capability.getMaxProgress() / 20;
+        final double progress = Math.min(maxProgress, (double) capability.getProgress() / 20);
         if (maxProgress > 0) {
-            int progressPercent = (int) Math.floor(currentProgress / (maxProgress) * 100);
-            String displayProgress = String.format("%ss / %ss | ", TJValues.thousandTwoPlaceFormat.format(currentProgress / 20), TJValues.thousandTwoPlaceFormat.format(maxProgress / 20));
             IProbeInfo progressInfo = probeInfo.horizontal(probeInfo.defaultLayoutStyle().alignment(ElementAlignment.ALIGN_TOPLEFT));
-            progressInfo.text(TextStyleClass.INFO + "{*gregtech.top.progress*} ");
-            progressInfo.progress(progressPercent, 100, probeInfo.defaultProgressStyle()
-                    .width((int) (displayProgress.length() * 6.2))
-                    .prefix(displayProgress)
-                    .suffix("%")
-                    .borderColor(GregicProbeConfig.borderColorProgress)
-                    .backgroundColor(GregicProbeConfig.backgroundColorProgress)
-                    .filledColor(GregicProbeConfig.filledColorProgress)
-                    .alternateFilledColor(GregicProbeConfig.alternateFilledColorProgress));
-        }
-        if (!capability.isWorkingEnabled()) {
-            ci.cancel();
-        } else if (capability instanceof IRecipeInfo && ((IRecipeInfo) capability).hasProblem()) {
-            probeInfo.text(TextStyleClass.INFOIMP + "{*machine.universal.has_problems*}");
-        } else if (capability instanceof IWorkable && capability.isActive()) {
-            probeInfo.text(TextStyleClass.INFOIMP + "{*machine.universal.running*}");
+            progressInfo.element(new ElementProgressBar("{*gregtech.top.progress*}", String.valueOf(progress), String.valueOf(maxProgress),
+                    "s", "s", Color.GREEN.toString(), ",##0.00"));
         }
         ci.cancel();
     }

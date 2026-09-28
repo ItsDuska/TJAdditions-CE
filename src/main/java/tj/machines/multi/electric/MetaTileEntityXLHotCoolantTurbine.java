@@ -659,5 +659,4 @@ public class MetaTileEntityXLHotCoolantTurbine extends MetaTileEntityHotCoolantT
     public boolean shouldPlaySound() {
         return this.isValid() && this.workableHandler.isActive() && this.isStructureFormed();
     }
-
 }

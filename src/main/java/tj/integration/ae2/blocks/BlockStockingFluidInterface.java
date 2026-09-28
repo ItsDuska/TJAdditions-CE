@@ -9,6 +9,8 @@ import gregtech.api.gui.ModularUI;
 import gregtech.api.gui.widgets.ImageWidget;
 import gregtech.api.gui.widgets.LabelWidget;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -18,6 +20,8 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.items.IItemHandler;
 import tj.integration.ae2.ISuperFluidInterface;
 import tj.integration.ae2.helpers.DualitySuperFluidInterface;
@@ -30,12 +34,24 @@ import tj.mui.widgets.impl.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class BlockStockingFluidInterface extends BlockFluidInterface {
 
+    public static final DualitySuperFluidInterface FLUID_DUALITY_INSTANCE = (DualitySuperFluidInterface) new TileStockingFluidInterface().getDualityFluidInterface();
+
     public BlockStockingFluidInterface() {
         this.setTileEntity(TileStockingFluidInterface.class);
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void addInformation(ItemStack is, World world, List<String> lines, ITooltipFlag advancedItemTooltips) {
+        if (FLUID_DUALITY_INSTANCE != null) {
+            lines.add(I18n.format("tile.me.super_fluid_interface.fluid_tanks", FLUID_DUALITY_INSTANCE.getTanks().getSlots()));
+            lines.add(I18n.format("tile.me.super_fluid_interface.upgrade_slots", FLUID_DUALITY_INSTANCE.getInventoryByName("upgrades").getSlots()));
+        }
     }
 
     @Override
@@ -72,7 +88,8 @@ public class BlockStockingFluidInterface extends BlockFluidInterface {
         }
         for (int i = 0; i < upgradeHandler.getSlots(); i++) {
             builder.widget(new TJSlotWidget<>(upgradeHandler, i, 186, 7 + (18 * i))
-                    .setActiveBackgroundTexture(GuiTextures.SLOT, TJGuiTextures.UPGRADE_OVERLAY));
+                    .setActiveBackgroundTexture(GuiTextures.SLOT, TJGuiTextures.UPGRADE_OVERLAY)
+                    .setSlotProtection(true));
         }
         for (int i = 0; i < duality.getTanks().getSlots(); i++) {
             builder.widget(new AEFluidTankWidget((AEFluidInventory) duality.getTanks(), i, 7 + (18 * (i % 9)), 52 + (36 * (i / 9)), 18, 18)
@@ -88,10 +105,11 @@ public class BlockStockingFluidInterface extends BlockFluidInterface {
                         .setCanSlide(false))
                 .widget(new LabelWidget(7, 181, "gui.appliedenergistics2.StoredFluids"))
                 .widget(new LabelWidget(7, 23, "gui.appliedenergistics2.Config"))
-                .widget(new TJToggleButtonWidget(-18, 35, 16, 16, () -> duality.getConfigManager().getSetting(Settings.BLOCK).ordinal() == 0, superFluidInterface::setAutoPull)
-                        .setToggleTooltipHoverText("tile.me.stocking_fluid_interface.auto_pull", "tile.me.stocking_fluid_interface.auto_pull")
-                        .setToggleTexture(TJGuiTextures.TOGGLE_AUTO_PULL)
-                        .useToggleTexture(true))
+                .widget(new TJToggleButtonWidget(-18, 35, 16, 16, TJGuiTextures.TOGGLE_AUTO_PULL, () -> duality.getConfigManager().getSetting(Settings.BLOCK).ordinal() == 0, superFluidInterface::setFluidAutoPull)
+                        .setToggleTooltipHoverText("tile.me.stocking_fluid_interface.auto_pull", "tile.me.stocking_fluid_interface.auto_pull"))
+                .widget(new TJToggleButtonWidget(-18, 53, 16, 16, TJGuiTextures.TOGGLE_BLOCKING_MODE, () -> duality.getConfigManager().getSetting(Settings.STICKY_MODE).ordinal() == 0, superFluidInterface::setFluidAutoPush)
+                        .setToggleTooltipHoverText("tile.me.stocking_fluid_interface.auto_push", "tile.me.stocking_fluid_interface.auto_push")
+                        .setInvertTexture(true))
                 .widget(buttonPopUpTickWidget.addPopup(widgetGroup -> true)
                         .addPopup(new ButtonWidget<>(132, 0, 22, 22)
                                 .setBackgroundTextures(TJGuiTextures.INTERFACE_SETTINGS_LEFT)

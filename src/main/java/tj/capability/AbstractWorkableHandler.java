@@ -1,7 +1,6 @@
 package tj.capability;
 
 import gregtech.api.capability.GregtechTileCapabilities;
-import gregtech.api.capability.IWorkable;
 import gregtech.api.metatileentity.MTETrait;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.util.function.BooleanConsumer;
@@ -10,12 +9,12 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fluids.FluidStack;
-import tj.TJConfig;
 
+import javax.annotation.Nonnull;
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 
 
-public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends MTETrait implements IWorkable, IRecipeInfo {
+public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends MTETrait implements IRecipeInfo {
 
     protected final H handler;
     protected BooleanConsumer activeConsumer;
@@ -34,6 +33,9 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
     protected int sleepTimer;
     protected int sleepTime = 1;
     protected int failCount;
+
+    @Nonnull
+    protected String hasProblemReason = "";
 
     public AbstractWorkableHandler(MetaTileEntity metaTileEntity) {
         super(metaTileEntity);
@@ -83,13 +85,13 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
                 if (this.handler.hasMaintenanceHatch())
                     this.handler.calculateMaintenance(this.maxProgress);
                 if (this.hasProblem)
-                    this.setProblem(false);
+                    this.setProblem(false, "");
             } else {
                 this.progress = 1;
-                this.maxProgress = TJConfig.machines.recipeCooldown;
+                this.maxProgress = ConfigHolder.recipeCooldown;
                 this.energyPerTick = 0;
                 if (!this.hasProblem)
-                    this.setProblem(true);
+                    this.setProblem(true, this.getHasProblemReason(0));
             }
         }
         if (this.progress < 1) {
@@ -181,7 +183,10 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
     public void receiveCustomData(int id, PacketBuffer buffer) {
         switch (id) {
             case 1: this.isActive = buffer.readBoolean(); break;
-            case 2: this.hasProblem = buffer.readBoolean(); break;
+            case 2:
+                this.hasProblem = buffer.readBoolean();
+                this.hasProblemReason = buffer.readString(Short.MAX_VALUE);
+                break;
             case 3: this.isWorking = buffer.readBoolean(); break;
         }
         this.metaTileEntity.scheduleRenderUpdate();
@@ -192,6 +197,7 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
         buffer.writeBoolean(this.isActive);
         buffer.writeBoolean(this.hasProblem);
         buffer.writeBoolean(this.isWorking);
+        buffer.writeString(this.hasProblemReason);
     }
 
     @Override
@@ -199,6 +205,7 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
         this.isActive = buffer.readBoolean();
         this.hasProblem = buffer.readBoolean();
         this.isWorking = buffer.readBoolean();
+        this.hasProblemReason = buffer.readString(Short.MAX_VALUE);
     }
 
     @Override
@@ -212,6 +219,7 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
         compound.setBoolean("isActive", this.isActive);
         compound.setBoolean("wasActiveAndNeedsUpdate", this.wasActiveAndNeedsUpdate);
         compound.setBoolean("hasProblem", this.hasProblem);
+        compound.setString("hasProblemReason", this.hasProblemReason);
         return compound;
     }
 
@@ -225,12 +233,15 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
         this.isActive = compound.getBoolean("isActive");
         this.wasActiveAndNeedsUpdate = compound.getBoolean("wasActiveAndNeedsUpdate");
         this.hasProblem = compound.getBoolean("hasProblem");
+        this.hasProblemReason = compound.getString("hasProblemReason");
     }
 
     @Override
     public <T> T getCapability(Capability<T> capability) {
         if (capability == GregtechTileCapabilities.CAPABILITY_CONTROLLABLE)
             return GregtechTileCapabilities.CAPABILITY_CONTROLLABLE.cast(this);
+        if (capability == TJCapabilities.CAPABILITY_RECIPE_INFO)
+            return TJCapabilities.CAPABILITY_RECIPE_INFO.cast(this);
         return capability == GregtechTileCapabilities.CAPABILITY_WORKABLE ? GregtechTileCapabilities.CAPABILITY_WORKABLE.cast(this) : null;
     }
 
@@ -293,7 +304,7 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
     }
 
     @Override
-    public boolean hasProblem() {
+    public boolean isHasProblems() {
         return this.hasProblem;
     }
 
@@ -313,12 +324,16 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
         }
     }
 
-    public void setProblem(boolean hasProblem) {
+    public void setProblem(boolean hasProblem, String reason) {
         this.hasProblem = hasProblem;
+        this.hasProblemReason = reason;
         if (!this.metaTileEntity.getWorld().isRemote) {
             if (this.problemConsumer != null)
                 this.problemConsumer.apply(hasProblem);
-            this.writeCustomData(2, buffer -> buffer.writeBoolean(hasProblem));
+            this.writeCustomData(2, buffer -> {
+                buffer.writeBoolean(hasProblem);
+                buffer.writeString(reason);
+            });
             this.metaTileEntity.markDirty();
         }
     }
@@ -331,5 +346,16 @@ public abstract class AbstractWorkableHandler<H extends IMachineHandler> extends
             this.writeCustomData(1, buffer -> buffer.writeBoolean(isActive));
             this.metaTileEntity.markDirty();
         }
+    }
+
+    @Nonnull
+    @Override
+    public String getHasProblemReason() {
+        return this.hasProblemReason;
+    }
+
+    @Nonnull
+    public String getHasProblemReason(int code) {
+        return "machine.universal.has_problems_reason.1";
     }
 }

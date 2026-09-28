@@ -495,6 +495,11 @@ public abstract class ParallelRecipeMapMultiblockController extends TJMultiblock
     }
 
     @Override
+    public boolean isActive() {
+        return super.isActive() && this.recipeLogic.isActive();
+    }
+
+    @Override
     public String getRecipeUid() {
         return Gregicality.MODID + ":" + this.getRecipeMap().getUnlocalizedName();
     }
@@ -610,11 +615,11 @@ public abstract class ParallelRecipeMapMultiblockController extends TJMultiblock
 
     @Override
     public int getJEIPreviewLayer() {
-        return (parallelLayer + getExtentStep() - 1) / getExtentStep();
+        return (this.parallelLayer + getExtentStep() - 1) / getExtentStep();
     }
 
     @SideOnly(Side.CLIENT)
-    public SoundEvent getSound(){
+    public SoundEvent getSound() {
         return this.getRecipeMap().getSound();
     }
 }

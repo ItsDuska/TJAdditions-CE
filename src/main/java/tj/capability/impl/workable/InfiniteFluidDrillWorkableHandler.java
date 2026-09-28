@@ -6,15 +6,13 @@ import gregtech.api.metatileentity.MetaTileEntity;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
-import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
-import tj.capability.IItemFluidHandlerInfo;
 import tj.capability.IMachineHandler;
-import tj.capability.TJCapabilities;
 import tj.capability.AbstractWorkableHandler;
 import tj.util.TJFluidUtils;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +21,7 @@ import static gregicadditions.GAMaterials.UsedDrillingMud;
 import static tj.machines.multi.electric.MetaTileEntityVoidMOreMiner.DRILLING_MUD;
 
 
-public class InfiniteFluidDrillWorkableHandler extends AbstractWorkableHandler<IMachineHandler> implements IItemFluidHandlerInfo {
+public class InfiniteFluidDrillWorkableHandler extends AbstractWorkableHandler<IMachineHandler> {
 
     private final List<FluidStack> fluidInputsList = new ArrayList<>();
     private final List<FluidStack> fluidOutputsList = new ArrayList<>();
@@ -56,9 +54,10 @@ public class InfiniteFluidDrillWorkableHandler extends AbstractWorkableHandler<I
                 this.fluidInputsList.add(DrillingMud.getFluid((int) Math.min(Integer.MAX_VALUE, amount)));
             for (amount = this.drillingMudAmount; amount > 0; amount -= Integer.MAX_VALUE)
                 this.fluidOutputsList.add(UsedDrillingMud.getFluid((int) Math.min(Integer.MAX_VALUE, amount)));
-            amount = this.outputFluidAmount /= (long) (1.00 + 0.05 * this.handler.getMaintenanceProblems());
+            amount = this.outputFluidAmount / (long) (1.00 + 0.05 * this.handler.getMaintenanceProblems());
             for (; amount > 0; amount -= Integer.MAX_VALUE)
                 this.fluidOutputsList.add(new FluidStack(this.veinFluid, (int) Math.min(Integer.MAX_VALUE, amount)));
+            this.energyPerTick = this.handler.getMaxVoltage();
             this.maxProgress = 20;
             return true;
         } else return false;
@@ -106,13 +105,6 @@ public class InfiniteFluidDrillWorkableHandler extends AbstractWorkableHandler<I
             this.fluidOutputsList.add(FluidStack.loadFluidStackFromNBT(fluidOutputsList.getCompoundTagAt(i)));
     }
 
-    @Override
-    public <T> T getCapability(Capability<T> capability) {
-        if (capability == TJCapabilities.CAPABILITY_ITEM_FLUID_HANDLING)
-            return TJCapabilities.CAPABILITY_ITEM_FLUID_HANDLING.cast(this);
-        return super.getCapability(capability);
-    }
-
     public Fluid getVeinFluid() {
         return this.veinFluid;
     }
@@ -130,11 +122,13 @@ public class InfiniteFluidDrillWorkableHandler extends AbstractWorkableHandler<I
         this.metaTileEntity.markDirty();
     }
 
+    @Nonnull
     @Override
     public List<FluidStack> getFluidInputs() {
         return this.fluidInputsList;
     }
 
+    @Nonnull
     @Override
     public List<FluidStack> getFluidOutputs() {
         return this.fluidOutputsList;

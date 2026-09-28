@@ -6,7 +6,6 @@ import gregtech.common.ConfigHolder;
 import net.minecraft.nbt.*;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.common.capabilities.Capability;
-import tj.TJConfig;
 
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 import java.util.Arrays;
@@ -112,7 +111,7 @@ public abstract class AbstractParallelWorkableHandler<H extends IMachineHandler>
                     this.setProblem(false, i);
             } else {
                 this.progress[i] = 1;
-                this.maxProgress[i] = TJConfig.machines.recipeCooldown;
+                this.maxProgress[i] = ConfigHolder.recipeCooldown;
                 this.energyPerTick[i] = 0;
                 if (!this.hasProblem[i])
                     this.setProblem(true, i);
@@ -403,7 +402,7 @@ public abstract class AbstractParallelWorkableHandler<H extends IMachineHandler>
     }
 
     @Override
-    public boolean hasProblem() {
+    public boolean isHasProblems() {
         for (int i = 0; i < this.size; i++)
             if (this.hasProblems(i))
                 return true;
@@ -452,5 +451,28 @@ public abstract class AbstractParallelWorkableHandler<H extends IMachineHandler>
         for (int i = 0; i < this.size; i++)
             eut += this.energyPerTick[i];
         return eut;
+    }
+
+    @Override
+    public String getHasProblemReason() {
+        return "";
+    }
+
+    @Override
+    public boolean isWorkingEnabled() {
+        return false;
+    }
+
+    @Override
+    public void setWorkingEnabled(boolean b) {}
+
+    @Override
+    public int getProgress() {
+        return 0;
+    }
+
+    @Override
+    public int getMaxProgress() {
+        return 0;
     }
 }

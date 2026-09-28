@@ -3,7 +3,7 @@ package tj.mui;
 import gregtech.api.gui.resources.AdoptableTextureArea;
 import gregtech.api.gui.resources.TextureArea;
 
-public class TJGuiTextures {
+public final class TJGuiTextures {
 
     public static final TextureArea DARKENED_SLOT = TextureArea.fullImage("textures/gui/base/darkened_slot.png");
     public static final TextureArea MULTIBLOCK_DISPLAY_BASE = AdoptableTextureArea.fullImage("textures/gui/base/multiblock_display_base.png", 18, 18, 2, 2);
@@ -26,8 +26,11 @@ public class TJGuiTextures {
     public static final TextureArea AUTOSCROLL_UP = TextureArea.fullImage("textures/gui/base/auto_scroll_up.png");
     public static final TextureArea AUTOSCROLL_DOWN = TextureArea.fullImage("textures/gui/base/auto_scroll_down.png");
 
+    public static final TextureArea BAR_BLUE = AdoptableTextureArea.fullImage("textures/gui/bar/bar_blue.png");
     public static final TextureArea BAR_RED = AdoptableTextureArea.fullImage("textures/gui/bar/bar_red.png");
     public static final TextureArea BAR_YELLOW = AdoptableTextureArea.fullImage("textures/gui/bar/bar_yellow.png");
+    public static final TextureArea BAR_GREEN = AdoptableTextureArea.fullImage("textures/gui/bar/bar_green.png");
+    public static final TextureArea BAR_ORANGE = AdoptableTextureArea.fullImage("textures/gui/bar/bar_orange.png");
 
     public static final TextureArea OUTPUT_BUTTON = TextureArea.fullImage("textures/gui/widget/button_output.png");
     public static final TextureArea TOGGLE_POWER_BUTTON = TextureArea.fullImage("textures/gui/widget/power_button_toggle.png");
@@ -50,6 +53,8 @@ public class TJGuiTextures {
     public static final TextureArea TOGGLE_SPLITTING_ITEMS_FLUIDS = TextureArea.fullImage("textures/gui/widget/splitting_items_fluids_toggle.png");
     public static final TextureArea CYCLE_BLOCKING_MODE_EX = TextureArea.fullImage("textures/gui/widget/blocking_mode_ex_cycle.png");
     public static final TextureArea TOGGLE_AUTO_PULL = TextureArea.fullImage("textures/gui/widget/auto_pull_toggle.png");
+    public static final TextureArea TOGGLE_SHOW_INTERFACES = TextureArea.fullImage("textures/gui/widget/show_interfaces_toggle.png");
+    public static final TextureArea TOGGLE_CRAFTING_INTERFACES = TextureArea.fullImage("textures/gui/widget/crafting_interfaces_toggle.png");
     public static final TextureArea CYCLE_LOCK_CRAFTING = TextureArea.fullImage("textures/gui/widget/lock_crafting_cycle.png");
     public static final TextureArea AE2_MULTIPLY2_BUTTON = TextureArea.fullImage("textures/gui/widget/ae2_multiply2_button.png");
     public static final TextureArea AE2_DIVIDE2_BUTTON = TextureArea.fullImage("textures/gui/widget/ae2_divide2_button.png");
@@ -94,4 +99,16 @@ public class TJGuiTextures {
     public static final TextureArea INTERFACE_SETTINGS_LEFT = TextureArea.fullImage("textures/gui/widget/interface_settings_base_left.png");
     public static final TextureArea UPGRADE_OVERLAY = TextureArea.fullImage("textures/gui/widget/me.upgrade_overlay.png");
     public static final TextureArea PATTERN_OVERLAY = TextureArea.fullImage("textures/gui/widget/me.pattern_overlay.png");
+
+    private TJGuiTextures() {}
+
+    public static TextureArea getBarByColor(String color) {
+        switch (color) {
+            case "§b": return TJGuiTextures.BAR_BLUE;
+            case "§e": return TJGuiTextures.BAR_YELLOW;
+            case "§a": return TJGuiTextures.BAR_GREEN;
+            case "§6": return TJGuiTextures.BAR_ORANGE;
+            default: return TJGuiTextures.BAR_RED;
+        }
+    }
 }

@@ -8,6 +8,7 @@ import net.minecraft.item.crafting.Ingredient;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.NonNullList;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -343,6 +344,75 @@ public final class TJItemUtils {
                 return true;
         }
         return false;
+    }
+
+    /**
+     * @param itemHandler check are there any items in this item handler.
+     * @param begin start slot index.
+     * @param end end up to slot index.
+     * @return false if there is an empty item in one of the slots.
+     */
+    public static boolean areSlotsFull(IItemHandler itemHandler, int begin, int end) {
+        for (int i = begin; i < end; i++) {
+            if (itemHandler.getStackInSlot(i).isEmpty())
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     *
+     * @param itemHandler container inventory.
+     * @param name name of item to check.
+     */
+    public static boolean isItemPresent(IItemHandler itemHandler, String name) {
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            final ItemStack stack = itemHandler.getStackInSlot(i);
+            if (stack.isEmpty()) continue;
+            if (stack.getDisplayName().contains(name))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Tries to insert item like normal but swaps out item currently occupied if slot not empty.
+     * This is not simulated.
+     * @param itemHandler target item inventory to insert or swap out item.
+     * @param slot slot index to insert or swap.
+     * @param itemStack the item to insert or swap the item in slot with.
+     * @return item reminder.
+     */
+    @Nonnull
+    public static ItemStack insertOrSwap(IItemHandler itemHandler, int slot, @Nonnull ItemStack itemStack) {
+        if (itemHandler == null)
+            return itemStack;
+        final ItemStack slotStack = itemHandler.getStackInSlot(slot);
+        if (slotStack.isEmpty() || (slotStack.isItemEqual(itemStack) && ItemStack.areItemStackTagsEqual(slotStack, itemStack))) {
+            return itemHandler.insertItem(slot, itemStack, false);
+        } else return swapItemAt(itemHandler, slot, itemStack);
+    }
+
+    /**
+     * Make sure to check if items are the same before doing this.
+     * This is not simulated.
+     * @param itemHandler target item inventory to perform the item swapping.
+     * @param slot the item in this slot index getting swapped. (Item A)
+     * @param itemStack the item to swap with. (Item B)
+     * @return (Item A). if the swapped failed then (item B) is returned.
+     */
+    @Nonnull
+    public static ItemStack swapItemAt(IItemHandler itemHandler, int slot, @Nonnull ItemStack itemStack) {
+        if (itemHandler == null)
+            return itemStack;
+        final ItemStack output = itemHandler.extractItem(slot, Integer.MAX_VALUE, false);
+        if (itemHandler.getStackInSlot(slot).isEmpty() && itemHandler.insertItem(slot, itemStack, true).isEmpty()) {
+            itemHandler.insertItem(slot, itemStack, false);
+            return output;
+        } else if (itemHandler instanceof IItemHandlerModifiable) {
+            ((IItemHandlerModifiable) itemHandler).setStackInSlot(slot, output);
+        } else itemHandler.insertItem(slot, output, false);
+        return itemStack;
     }
 
     /**

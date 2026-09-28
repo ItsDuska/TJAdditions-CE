@@ -18,6 +18,7 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.PacketBuffer;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -29,6 +30,7 @@ import tj.mui.widgets.ISlotGroup;
 import tj.mui.widgets.ISlotHandler;
 import tj.mui.widgets.TJWidget;
 import tj.util.TJItemUtils;
+import tj.util.TooltipHelper;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -69,14 +71,14 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
         super(new Position(x, y), new Size(18, 18));
         this.itemHandler = itemHandler;
         this.slotIndex = slotIndex;
-        this.slotItemHandler = new TJSlotItemHandler(this.itemHandler, slotIndex, x, y);
+        this.slotItemHandler = new TJSlotItemHandler(this.itemHandler, slotIndex, x, y, isClientSide());
     }
 
     public TJSlotWidget(Supplier<IItemHandler> itemHandlerSupplier, int slotIndex, int x, int y) {
         super(new Position(x, y), new Size(18, 18));
         this.itemHandler = itemHandlerSupplier.get();
         this.slotIndex = slotIndex;
-        this.slotItemHandler = new TJSlotItemHandler(itemHandlerSupplier, slotIndex, x, y);
+        this.slotItemHandler = new TJSlotItemHandler(itemHandlerSupplier, slotIndex, x, y, isClientSide());
         this.itemHandlerSupplier = itemHandlerSupplier;
     }
 
@@ -110,8 +112,19 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
         return (R) this;
     }
 
-    protected IItemHandler getItemHandler() {
-        return this.itemHandlerSupplier != null ? this.itemHandlerSupplier.get() : this.itemHandler;
+    /**
+     * @param slotEnabled enable to prevent weird slot behavior if this slot is outside of main GUI box.
+     */
+    public R setSlotProtection(boolean slotEnabled) {
+        this.slotItemHandler.setEnabled(slotEnabled);
+        return (R) this;
+    }
+
+    @Override
+    public void initWidget() {
+        super.initWidget();
+        this.slotItemHandler.xPos = this.getPosition().getX() + 1;
+        this.slotItemHandler.yPos = this.getPosition().getY() + 1;
     }
 
     @Override
@@ -119,11 +132,27 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
     public void drawInForeground(int mouseX, int mouseY) {
         if (!this.isActive) return;
         if (!this.itemStack.isEmpty() && this.isMouseOverElement(mouseX, mouseY) && this.getItemHandler() != null) {
-            final List<String> tooltip = getItemToolTip(this.itemStack);
+            final List<String> tooltips = getItemToolTip(this.itemStack);
             final String itemStoredText = I18n.format("gregtech.item_list.item_stored", this.itemCount);
-            tooltip.add(TextFormatting.GRAY + itemStoredText);
-            this.drawHoveringText(this.itemStack, tooltip, -1, mouseX, mouseY);
+            tooltips.add(TextFormatting.GRAY + itemStoredText);
+            TooltipHelper.shiftText(tooltips, this::addToHoverTooltip);
+            this.drawHoveringText(this.itemStack, tooltips, -1, mouseX, mouseY);
         }
+    }
+
+    @SideOnly(Side.CLIENT)
+    protected void addToHoverTooltip(List<String> tooltips) {
+        tooltips.add(I18n.format("tj.machine.universal.slot.description"));
+        tooltips.add(""); // add empty line
+        tooltips.add(I18n.format("tj.machine.universal.slot.left_click"));
+        tooltips.add(""); // add empty line
+        tooltips.add(I18n.format("tj.machine.universal.slot.left_click_empty"));
+        tooltips.add(""); // add empty line
+        tooltips.add(I18n.format("tj.machine.universal.slot.shift_left_click"));
+        tooltips.add(""); // add empty line
+        tooltips.add(I18n.format("tj.machine.universal.slot.right_click"));
+        tooltips.add(""); // add empty line
+        tooltips.add(I18n.format("tj.machine.universal.slot.middle_click"));
     }
 
     @Override
@@ -289,7 +318,7 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
                         } else return;
                     } else if (this.widgetGroup == null && (this.putItemsPredicate == null || this.putItemsPredicate.test(handStack))) {
                         // if this slot was not added to a slot group then let this slot handle the stack insertion
-                        newStack = this.insert(handStack, false);
+                        newStack = TJItemUtils.insertOrSwap(this.itemHandler, this.slotIndex, handStack);
                     } else return;
                 } else if (button == 1) {
                     if (handStack.isEmpty()) {
@@ -396,13 +425,12 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
     }
 
     @Override
-    public void setEnabled(boolean b) {
+    public void setEnabled(boolean b) {}
 
-    }
-
-    @Override
-    public Slot getHandle() {
-        return this.slotItemHandler;
+    public void forceUpdate() {
+        this.itemStack = ItemStack.EMPTY;
+        this.itemCount = 0;
+        this.compound = null;
     }
 
     @Override
@@ -420,28 +448,30 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
         return ItemStack.EMPTY;
     }
 
-    public void forceUpdate() {
-        this.itemStack = ItemStack.EMPTY;
-        this.itemCount = 0;
-        this.compound = null;
+    @Override
+    public Slot getHandle() {
+        return this.slotItemHandler;
+    }
+
+    protected IItemHandler getItemHandler() {
+        return this.itemHandlerSupplier != null ? this.itemHandlerSupplier.get() : this.itemHandler;
     }
 
     private static class TJSlotItemHandler extends SlotItemHandler {
 
+        private final boolean isClient;
         private Supplier<IItemHandler> itemHandlerSupplier;
+        private boolean enabled;
 
-        public TJSlotItemHandler(IItemHandler itemHandler, int index, int xPosition, int yPosition) {
+        public TJSlotItemHandler(IItemHandler itemHandler, int index, int xPosition, int yPosition, boolean isClient) {
             super(itemHandler, index, xPosition, yPosition);
+            this.isClient = isClient;
         }
 
-        public TJSlotItemHandler(Supplier<IItemHandler> itemHandlerSupplier, int index, int xPosition, int yPosition) {
+        public TJSlotItemHandler(Supplier<IItemHandler> itemHandlerSupplier, int index, int xPosition, int yPosition, boolean isClient) {
             super(itemHandlerSupplier.get(), index, xPosition, yPosition);
             this.itemHandlerSupplier = itemHandlerSupplier;
-        }
-
-        @Override
-        public IItemHandler getItemHandler() {
-            return this.itemHandlerSupplier != null ? this.itemHandlerSupplier.get() : super.getItemHandler();
+            this.isClient = isClient;
         }
 
         @Override
@@ -455,15 +485,36 @@ public class TJSlotWidget<R extends TJSlotWidget<R>> extends TJWidget<R> impleme
             return false;
         }
 
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        @Override
+        @Nonnull
+        public ItemStack getStack() {
+            return this.isClient ? ItemStack.EMPTY : super.getStack();
+        }
+
+        @Override
+        @SideOnly(Side.CLIENT)
+        public boolean isEnabled() {
+            return this.enabled;
+        }
+
+        @Override
+        @SideOnly(Side.CLIENT)
+        public void setBackgroundLocation(@Nonnull ResourceLocation texture) {}
+
         @Nullable
         @Override
+        @SideOnly(Side.CLIENT)
         public TextureAtlasSprite getBackgroundSprite() {
             return null;
         }
 
         @Override
-        public boolean isEnabled() {
-            return false;
+        public IItemHandler getItemHandler() {
+            return this.itemHandlerSupplier != null ? this.itemHandlerSupplier.get() : super.getItemHandler();
         }
     }
 }

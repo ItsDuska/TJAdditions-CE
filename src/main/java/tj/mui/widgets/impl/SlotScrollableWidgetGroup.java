@@ -147,6 +147,8 @@ public class SlotScrollableWidgetGroup extends WidgetGroup implements ISlotGroup
     @Override
     @SideOnly(Side.CLIENT)
     public void drawInBackground(int mouseX, int mouseY, IRenderContext context) {
+        final Position position = this.getPosition();
+        final Size size = this.getSize();
         //make sure mouse is not hovered on any element when outside of bounds
         if (!this.isPositionInsideScissor(mouseX, mouseY)) {
             mouseX = Integer.MAX_VALUE;
@@ -154,19 +156,18 @@ public class SlotScrollableWidgetGroup extends WidgetGroup implements ISlotGroup
         }
         final int finalMouseX = mouseX;
         final int finalMouseY = mouseY;
-        final Position position = this.getPosition();
-        final Size size = this.getSize();
         final int paneSize = this.scrollPaneWidth;
-        final int scrollX = position.x + size.width - paneSize;
-        drawSolidRect(scrollX, position.y, paneSize, size.height, 0xFF666666);
-        drawSolidRect(scrollX + 1, position.y + 1, paneSize - 2, size.height - 2, 0xFF888888);
+        if (this.totalListHeight > size.height) {
+            final int scrollX = position.x + size.width - paneSize;
+            drawSolidRect(scrollX, position.y, paneSize, size.height, 0xFF666666);
+            drawSolidRect(scrollX + 1, position.y + 1, paneSize - 2, size.height - 2, 0xFF888888);
 
-        final int maxScrollOffset = this.totalListHeight - size.height;
-        final float scrollPercent = maxScrollOffset == 0 ? 0 : this.scrollOffset / (maxScrollOffset * 1.0f);
-        final int scrollSliderHeight = 14;
-        final int scrollSliderY = Math.round(position.y + (size.height - scrollSliderHeight) * scrollPercent);
-        drawGradientRect(scrollX + 1, scrollSliderY, paneSize - 2, scrollSliderHeight, 0xFF555555, 0xFF454545);
-
+            final int maxScrollOffset = this.totalListHeight - size.height;
+            final float scrollPercent = maxScrollOffset == 0 ? 0 : this.scrollOffset / (maxScrollOffset * 1.0f);
+            final int scrollSliderHeight = 14;
+            final int scrollSliderY = Math.round(position.y + (size.height - scrollSliderHeight) * scrollPercent);
+            drawGradientRect(scrollX + 1, scrollSliderY, paneSize - 2, scrollSliderHeight, 0xFF555555, 0xFF454545);
+        }
         RenderUtil.useScissor(position.x, position.y, size.width - paneSize, size.height, () ->
                 super.drawInBackground(finalMouseX, finalMouseY, context));
     }
@@ -307,20 +308,26 @@ public class SlotScrollableWidgetGroup extends WidgetGroup implements ISlotGroup
             this.writeUpdateInfo(3, buffer1 -> buffer1.writeItemStack(finalStack));
         } else if (id == 5) {
             try {
-                final ItemStack heldStack = buffer.readItemStack();
+                ItemStack heldStack = buffer.readItemStack();
                 final int size = buffer.readInt();
                 int remainder = heldStack.getCount() % size;
                 int amountPerSlot = (heldStack.getCount() - remainder) / size;
+                ItemStack stack = heldStack;
                 for (int i = 0; i < size; i++) {
                     final int index = buffer.readInt();
-                    ItemStack stack = buffer.readItemStack();
+                    stack = buffer.readItemStack();
                     stack.setCount(amountPerSlot);
-                    stack = this.itemHandler.insertItem(index, stack, false);
+                    if (size == 1) {
+                        stack = TJItemUtils.insertOrSwap(this.itemHandler, index, stack);
+                    } else stack = this.itemHandler.insertItem(index, stack, false);
                     remainder += stack.getCount();
                 }
-                heldStack.setCount(remainder);
-                this.gui.entityPlayer.inventory.setItemStack(heldStack);
-                this.writeUpdateInfo(3, buffer1 -> buffer1.writeItemStack(heldStack));
+                if (size == 1) {
+                    heldStack = stack;
+                } else heldStack.setCount(remainder);
+                final ItemStack finalHeldStack = heldStack;
+                this.gui.entityPlayer.inventory.setItemStack(finalHeldStack);
+                this.writeUpdateInfo(3, buffer1 -> buffer1.writeItemStack(finalHeldStack));
             } catch (IOException e) {
                 TJ.logger.info(e.getMessage());
             }

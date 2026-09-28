@@ -18,7 +18,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class TJItems {
+public final class TJItems {
 
     public static final Object2ObjectMap<ResourceLocation, Item> TJ_ITEM_REGISTRY = new Object2ObjectOpenHashMap<>();
     public static final Object2ObjectMap<ResourceLocation, IItemDefinition> TJ_ITEM_DEFINITION_REGISTRY = new Object2ObjectOpenHashMap<>();
@@ -29,6 +29,13 @@ public class TJItems {
     public static Item UNBREAKABLE_SHEARS;
     public static Item MAX_CAPACITY_UPGRADE;
 
+    public static IItemDefinition WIRELESS_SUPER_INTERFACE_TERMINAL;
+    public static IItemDefinition WIRELESS_CELL_TERMINAL;
+    public static IItemDefinition WIRELESS_STORAGE_BUS_TERMINAL;
+    public static IItemDefinition WIRELESS_SUPER_FLUID_INTERFACE_TERMINAL;
+    public static IItemDefinition WIRELESS_FLUID_STORAGE_BUS_TERMINAL;
+
+    public static IItemDefinition PART_DUAL_INTERFACE_V2;
     public static IItemDefinition PART_SUPER_INTERFACE;
     public static IItemDefinition PART_SUPER_FLUID_INTERFACE;
     public static IItemDefinition PART_SUPER_DUAL_INTERFACE;
@@ -37,6 +44,14 @@ public class TJItems {
     public static IItemDefinition PART_STOCKING_FLUID_INTERFACE;
     public static IItemDefinition PART_STOCKING_DUAL_INTERFACE;
     public static IItemDefinition PART_SUPER_ULTIMATE_INTERFACE;
+
+    public static IItemDefinition PART_SUPER_INTERFACE_TERMINAL;
+    public static IItemDefinition PART_CELL_TERMINAL;
+    public static IItemDefinition PART_STORAGE_BUS_TERMINAL;
+    public static IItemDefinition PART_SUPER_FLUID_INTERFACE_TERMINAL;
+    public static IItemDefinition PART_FLUID_STORAGE_BUS_TERMINAL;
+
+    public static IItemDefinition SUPER_PATTERN_MULTITOOL;
 
     public static IItemDefinition MATERIAL_ITEM_CELL_65536K;
     public static IItemDefinition MATERIAL_ITEM_CELL_262144K;
@@ -65,6 +80,13 @@ public class TJItems {
         UNBREAKABLE_SHEARS = registerItem(registry, "unbreakable_shears", new ItemUnbreakableShears());
         MAX_CAPACITY_UPGRADE = registerItem(registry, "me.max_capacity_upgrade", new ItemMaxCapacityUpgrade());
 
+        WIRELESS_SUPER_INTERFACE_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.wireless_super_interface_terminal", new ItemWirelessSuperInterfaceTerminal()));
+        WIRELESS_CELL_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.wireless_cell_terminal", new ItemWirelessCellTerminal()));
+        WIRELESS_STORAGE_BUS_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.wireless_storage_bus_terminal", new ItemWirelessStorageBusTerminal()));
+        WIRELESS_SUPER_FLUID_INTERFACE_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.wireless_super_fluid_interface_terminal", new ItemWirelessSuperFluidInterfaceTerminal()));
+        WIRELESS_FLUID_STORAGE_BUS_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.wireless_fluid_storage_bus_terminal", new ItemWirelessFluidStorageBusTerminal()));
+
+        PART_DUAL_INTERFACE_V2 = registerItem(registry, item -> new ItemDefinition("me.part.dual_interface_v2", new ItemPartDualInterfaceV2()));
         PART_SUPER_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.super_interface", new ItemPartSuperInterface()));
         PART_SUPER_FLUID_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.super_fluid_interface", new ItemPartSuperFluidInterface()));
         PART_SUPER_DUAL_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.super_dual_interface", new ItemPartSuperDualInterface()));
@@ -73,6 +95,14 @@ public class TJItems {
         PART_STOCKING_FLUID_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.stocking_fluid_interface", new ItemPartStockingFluidInterface()));
         PART_STOCKING_DUAL_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.stocking_dual_interface", new ItemPartStockingDualInterface()));
         PART_SUPER_ULTIMATE_INTERFACE = registerItem(registry, item -> new ItemDefinition("me.part.super_ultimate_interface", new ItemPartSuperUltimateInterface()));
+
+        PART_SUPER_INTERFACE_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.part.super_interface_terminal", new ItemPartSuperInterfaceTerminal()));
+        PART_CELL_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.part.cell_terminal", new ItemPartCellTerminal()));
+        PART_STORAGE_BUS_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.part.storage_bus_terminal", new ItemPartStorageBusInterfaceTerminal()));
+        PART_SUPER_FLUID_INTERFACE_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.part.super_fluid_interface_terminal", new ItemPartSuperFluidInterfaceTerminal()));
+        PART_FLUID_STORAGE_BUS_TERMINAL = registerItem(registry, item -> new ItemDefinition("me.part.fluid_storage_bus_terminal", new ItemPartFluidStorageBusTerminal()));
+
+        SUPER_PATTERN_MULTITOOL = registerItem(registry, item -> new ItemDefinition("me.part.super_pattern_multiplier", new ItemSuperPatternMultiplier()));
 
         MATERIAL_ITEM_CELL_65536K = registerItem(registry, item -> new ItemDefinition("me.material.item_cell.65536k", item));
         MATERIAL_ITEM_CELL_262144K = registerItem(registry, item -> new ItemDefinition("me.material.item_cell.262144k", item));

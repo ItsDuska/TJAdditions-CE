@@ -25,13 +25,10 @@ import gregtech.common.blocks.MetaBlocks;
 import gregtech.common.sound.GTSoundEvents;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import tj.builder.multicontrollers.GUIDisplayBuilder;
@@ -44,7 +41,6 @@ import tj.textures.TJTextures;
 import tj.util.EnumFacingHelper;
 import tj.util.TJUtility;
 
-import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,12 +68,6 @@ public class MetaTileEntityTJMultiSmelter extends TJMultiblockControllerBase imp
     @Override
     public MetaTileEntity createMetaTileEntity(MetaTileEntityHolder holder) {
         return new MetaTileEntityTJMultiSmelter(this.metaTileEntityId);
-    }
-
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void addInformation(ItemStack stack, @Nullable World player, List<String> tooltip, boolean advanced) {
-        tooltip.add(I18n.format("tj.multiblock.temporary"));
     }
 
     @Override
@@ -114,7 +104,7 @@ public class MetaTileEntityTJMultiSmelter extends TJMultiblockControllerBase imp
                 .addParallelLine(this.workableHandler.getParallelsPerformed(), this.getParallel())
                 .addTranslationLine("gregtech.multiblock.multi_furnace.heating_coil_level", this.coilLevel)
                 .addTranslationLine("gregtech.multiblock.multi_furnace.heating_coil_discount", this.coilEnergyDiscount)
-                .addIsWorkingLine(this.workableHandler.isWorkingEnabled(), this.workableHandler.isActive(), this.workableHandler.getProgress(), this.workableHandler.getMaxProgress(), this.workableHandler.hasProblem(), 998)
+                .addIsWorkingLine(this.workableHandler.isWorkingEnabled(), this.workableHandler.isActive(), this.workableHandler.getProgress(), this.workableHandler.getMaxProgress(), this.workableHandler.isHasProblems(), 998)
                 .addRecipeInputLine(this.workableHandler, 999)
                 .addRecipeOutputLine(this.workableHandler, 1000);
         if (this.hasDistinct())
@@ -164,7 +154,7 @@ public class MetaTileEntityTJMultiSmelter extends TJMultiblockControllerBase imp
     @SideOnly(Side.CLIENT)
     public void renderMetaTileEntity(CCRenderState renderState, Matrix4 translation, IVertexOperation[] pipeline) {
         super.renderMetaTileEntity(renderState, translation, pipeline);
-        TJTextures.TJ_MULTIBLOCK_WORKABLE_OVERLAY.render(renderState, translation, pipeline, this.getFrontFacing(), this.workableHandler.isActive(), this.workableHandler.hasProblem(), this.workableHandler.isWorkingEnabled());
+        TJTextures.TJ_MULTIBLOCK_WORKABLE_OVERLAY.render(renderState, translation, pipeline, this.getFrontFacing(), this.workableHandler.isActive(), this.workableHandler.isHasProblems(), this.workableHandler.isWorkingEnabled());
         TJTextures.TJ_LOGO.renderSided(EnumFacingHelper.getLeftFacingFrom(this.getFrontFacing()), renderState, translation, pipeline);
         TJTextures.TJ_LOGO.renderSided(EnumFacingHelper.getRightFacingFrom(this.getFrontFacing()), renderState, translation, pipeline);
     }

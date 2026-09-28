@@ -9,19 +9,27 @@ import gregtech.api.recipes.CountableIngredient;
 import gregtech.api.recipes.RecipeMap;
 import gregtech.common.items.MetaItems;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.*;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraftforge.fluids.FluidStack;
 import tj.TJValues;
-import tj.capability.IItemFluidHandlerInfo;
 import tj.capability.IParallelItemFluidHandlerInfo;
+import tj.capability.IRecipeInfo;
 import tj.mui.widgets.impl.AdvancedDisplayWidget;
 import tj.mixin.gregtech.IMixinAbstractRecipeLogic;
 import tj.util.TJFluidUtils;
 import tj.util.TJUtility;
 import tj.util.TextUtils;
+import tj.util.map.Strategies;
+import tj.util.wrappers.GTFluidStackWrapper;
+import tj.util.wrappers.GTItemStackWrapper;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -31,6 +39,8 @@ import static tj.util.TJFluidUtils.VOID_TANK;
 
 public final class GUIDisplayBuilder {
 
+    private final Int2ObjectMap<Object2ObjectMap<ItemStack, GTItemStackWrapper>> itemMap = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Object2ObjectMap<FluidStack, GTFluidStackWrapper>> fluidMap = new Int2ObjectOpenHashMap<>();
     private final List<AdvancedDisplayWidget.TextComponentWrapper<?>> textComponentWrappers = new ArrayList<>();
     private final boolean nested;
     private int count;
@@ -64,7 +74,13 @@ public final class GUIDisplayBuilder {
     }
 
     public GUIDisplayBuilder addItemStack(ItemStack itemStack, int priority) {
-        this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(itemStack).setPriority(priority));
+        this.itemMap.computeIfAbsent(priority, key -> new Object2ObjectOpenCustomHashMap<>(Strategies.ITEMSTACK_STRATEGY))
+                .computeIfAbsent(itemStack, key -> {
+                    final GTItemStackWrapper itemStackWrapper = new GTItemStackWrapper(key, 0);
+                    this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(itemStackWrapper)
+                            .setPriority(priority));
+                    return itemStackWrapper;
+                }).increment(itemStack.getCount());
         return this;
     }
 
@@ -73,8 +89,14 @@ public final class GUIDisplayBuilder {
             throw new IllegalArgumentException("Cannot set hover text on hover text");
         final GUIDisplayBuilder builder = new GUIDisplayBuilder(true);
         uiBuilder.accept(builder);
-        this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(itemStack).setPriority(priority)
-                .setAdvancedHoverComponent(builder.getTextComponentWrappers()));
+        this.itemMap.computeIfAbsent(priority, key -> new Object2ObjectOpenCustomHashMap<>(Strategies.ITEMSTACK_STRATEGY))
+                .computeIfAbsent(itemStack, key -> {
+                    final GTItemStackWrapper itemStackWrapper = new GTItemStackWrapper(key, 0);
+                    this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(itemStackWrapper)
+                            .setAdvancedHoverComponent(builder.getTextComponentWrappers())
+                            .setPriority(priority));
+                    return itemStackWrapper;
+                }).increment(itemStack.getCount());
         return this;
     }
 
@@ -94,7 +116,13 @@ public final class GUIDisplayBuilder {
     }
 
     public GUIDisplayBuilder addFluidStack(FluidStack fluidStack, int priority) {
-        this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(fluidStack).setPriority(priority));
+        this.fluidMap.computeIfAbsent(priority, key -> new Object2ObjectOpenHashMap<>())
+                .computeIfAbsent(fluidStack, key -> {
+                    final GTFluidStackWrapper fluidStackWrapper = new GTFluidStackWrapper(key, 0);
+                    this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(fluidStackWrapper)
+                            .setPriority(priority));
+                    return fluidStackWrapper;
+                }).increment(fluidStack.amount);
         return this;
     }
 
@@ -103,8 +131,14 @@ public final class GUIDisplayBuilder {
             throw new IllegalArgumentException("Cannot set hover text on hover text");
         final GUIDisplayBuilder builder = new GUIDisplayBuilder(true);
         uiBuilder.accept(builder);
-        this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(fluidStack).setPriority(priority)
-                .setAdvancedHoverComponent(builder.getTextComponentWrappers()));
+        this.fluidMap.computeIfAbsent(priority, key -> new Object2ObjectOpenHashMap<>())
+                .computeIfAbsent(fluidStack, key -> {
+                    final GTFluidStackWrapper fluidStackWrapper = new GTFluidStackWrapper(key, 0);
+                    this.textComponentWrappers.add(new AdvancedDisplayWidget.TextComponentWrapper<>(fluidStackWrapper)
+                            .setAdvancedHoverComponent(builder.getTextComponentWrappers())
+                            .setPriority(priority));
+                    return fluidStackWrapper;
+                }).increment(fluidStack.amount);
         return this;
     }
 
@@ -216,10 +250,8 @@ public final class GUIDisplayBuilder {
         if (tier > 0) {
             final String text = tier > 14 ? "§c§lM§e§lA§a§lX§b§l+§d§l" + (tier - 14) : TJValues.VCC[tier] + GAValues.VN[tier] + "§r";
             if (priority != 0) {
-                this.addTextComponent(new TextComponentTranslation("machine.universal.tooltip.voltage_tier")
-                        .appendText(" §7(").appendSibling(new TextComponentString(text)).appendText("§7)"), priority);
-            } else this.addTextComponent(new TextComponentTranslation("machine.universal.tooltip.voltage_tier")
-                    .appendText(" §7(").appendSibling(new TextComponentString(text)).appendText("§7)"));
+                this.addTextComponent(new TextComponentTranslation("machine.universal.tooltip.voltage_tier", text), priority);
+            } else this.addTextComponent(new TextComponentTranslation("machine.universal.tooltip.voltage_tier", text));
         }
         return this;
     }
@@ -294,14 +326,16 @@ public final class GUIDisplayBuilder {
     public GUIDisplayBuilder addFluidInputLine(IMultipleTankHandler tanks, FluidStack fluidStack, long amount, int ticks, int priority) {
         if (fluidStack == null)
             return this;
+        long currentAmount = 0;
         amount = amount > 0 ? amount : fluidStack.amount;
         final String fluidName = fluidStack.getLocalizedName();
-        final boolean hasEnoughFluid = amount < 1 || TJFluidUtils.drainFromTanksLong(tanks, fluidStack, amount, false) == amount;
+        final boolean hasEnoughFluid = amount < 1 || (currentAmount = TJFluidUtils.drainFromTanksLong(tanks, fluidStack, amount, false)) == amount;
         final ITextComponent fluidInputText = !hasEnoughFluid ? new TextComponentTranslation("tj.multiblock.not_enough_fluid", fluidName, TJValues.thousandFormat.format(amount))
-                : ticks == 1 ? new TextComponentTranslation("machine.universal.fluid.input.tick", fluidName, TJValues.thousandFormat.format(amount))
-                : ticks % 20 != 0 ? new TextComponentTranslation("machine.universal.fluid.input.ticks", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks))
-                : ticks == 20 ? new TextComponentTranslation("machine.universal.fluid.input.sec", fluidName, TJValues.thousandFormat.format(amount))
-                : new TextComponentTranslation("machine.universal.fluid.input.secs", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks / 20));
+                : ticks == 1 ? new TextComponentTranslation("tj.machine.universal.fluid.input.tick", fluidName, TJValues.thousandFormat.format(amount))
+                : ticks % 20 != 0 ? new TextComponentTranslation("tj.machine.universal.fluid.input.ticks", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks))
+                : ticks == 20 ? new TextComponentTranslation("tj.machine.universal.fluid.input.sec", fluidName, TJValues.thousandFormat.format(amount))
+                : new TextComponentTranslation("tj.machine.universal.fluid.input.secs", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks / 20));
+        fluidInputText.setStyle(new Style().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentTranslation("tj.machine.universal.fluid_current_amount", "§b" + TJValues.thousandFormat.format(currentAmount)))));
         if (priority != 0)
             return this.addTextComponent(fluidInputText, priority);
         else return this.addTextComponent(fluidInputText);
@@ -322,14 +356,16 @@ public final class GUIDisplayBuilder {
     public GUIDisplayBuilder addFluidOutputLine(IMultipleTankHandler tanks, FluidStack fluidStack, long amount, int ticks, int priority) {
         if (fluidStack == null)
             return this;
+        long currentAmount = 0;
         amount = amount > 0 ? amount : fluidStack.amount;
         final String fluidName = fluidStack.getLocalizedName();
-        final boolean hasEnoughFluid = amount < 1 || tanks == VOID_TANK || TJFluidUtils.fillIntoTanksLong(tanks, fluidStack, amount, false) == amount;
+        final boolean hasEnoughFluid = amount < 1 || tanks == VOID_TANK || (currentAmount = TJFluidUtils.fillIntoTanksLong(tanks, fluidStack, amount, false)) == amount;
         final ITextComponent fluidInputText = !hasEnoughFluid ? new TextComponentTranslation("tj.multiblock.not_enough_fluid.space", fluidName, TJValues.thousandFormat.format(amount))
-                : ticks == 1 ? new TextComponentTranslation("machine.universal.fluid.output.tick", fluidName, TJValues.thousandFormat.format(amount))
-                : ticks % 20 != 0 ? new TextComponentTranslation("machine.universal.fluid.output.ticks", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks))
-                : ticks == 20 ? new TextComponentTranslation("machine.universal.fluid.output.sec", fluidName, TJValues.thousandFormat.format(amount))
-                : new TextComponentTranslation("machine.universal.fluid.output.secs", fluidName, TJValues.thousandFormat.format(amount));
+                : ticks == 1 ? new TextComponentTranslation("tj.machine.universal.fluid.output.tick", fluidName, TJValues.thousandFormat.format(amount))
+                : ticks % 20 != 0 ? new TextComponentTranslation("tj.machine.universal.fluid.output.ticks", TJValues.thousandFormat.format(amount), fluidName, TJValues.thousandFormat.format(ticks))
+                : ticks == 20 ? new TextComponentTranslation("tj.machine.universal.fluid.output.sec", fluidName, TJValues.thousandFormat.format(amount))
+                : new TextComponentTranslation("tj.machine.universal.fluid.output.secs", fluidName, TJValues.thousandFormat.format(amount));
+        fluidInputText.setStyle(new Style().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentTranslation("tj.machine.universal.fluid_current_amount", "§b" + TJValues.thousandFormat.format(currentAmount)))));
         if (priority != 0)
             return this.addTextComponent(fluidInputText, priority);
         else return this.addTextComponent(fluidInputText);
@@ -348,6 +384,10 @@ public final class GUIDisplayBuilder {
     }
 
     public GUIDisplayBuilder addIsWorkingLine(boolean isWorkingEnabled, boolean isActive, int progress, int maxProgress, boolean hasProblems, int priority) {
+        return this.addIsWorkingLine(isWorkingEnabled, isActive, progress, maxProgress, hasProblems, "", priority);
+    }
+
+    public GUIDisplayBuilder addIsWorkingLine(boolean isWorkingEnabled, boolean isActive, int progress, int maxProgress, boolean hasProblems, @Nonnull String hasProblemsReason, int priority) {
         if (isActive) {
             progress--;
             final int finalProgress = progress;
@@ -364,9 +404,15 @@ public final class GUIDisplayBuilder {
                 : hasProblems ? "machine.universal.has_problems"
                 : !isActive ? "machine.universal.idling"
                 : "machine.universal.running";
-        if (priority != 0)
+        if (priority != 0) {
             this.addTranslationLine(priority, isWorkingText);
-        else this.addTranslationLine(isWorkingText);
+            if (hasProblems && !hasProblemsReason.isEmpty())
+                this.addTranslationLine(priority, hasProblemsReason);
+        } else {
+            this.addTranslationLine(isWorkingText);
+            if (hasProblems && !hasProblemsReason.isEmpty())
+                this.addTranslationLine(hasProblemsReason);
+        }
         return this;
     }
 
@@ -387,76 +433,54 @@ public final class GUIDisplayBuilder {
         return this;
     }
 
-    public GUIDisplayBuilder addRecipeInputLine(IItemFluidHandlerInfo handlerInfo) {
-        return this.addRecipeInputLine(handlerInfo, 0);
+    public GUIDisplayBuilder addRecipeInputLine(IRecipeInfo handlerInfo) {
+        return this.addRecipeInputLine(handlerInfo, this.count++);
     }
 
-    public GUIDisplayBuilder addRecipeInputLine(IItemFluidHandlerInfo handlerInfo, int priority) {
-        if ((handlerInfo.getItemInputs() != null && !handlerInfo.getItemInputs().isEmpty()) || (handlerInfo.getFluidInputs() != null && !handlerInfo.getFluidInputs().isEmpty())) {
+    public GUIDisplayBuilder addRecipeInputLine(IRecipeInfo handlerInfo, int priority) {
+        if (!handlerInfo.getItemInputs().isEmpty() || !handlerInfo.getFluidInputs().isEmpty()) {
             if (priority != 0)
                 this.addTranslationLine(priority, "machine.universal.consumption");
             else this.addTranslationLine("machine.universal.consumption");
-            if (handlerInfo.getFluidInputs() != null) {
-                for (FluidStack stack : handlerInfo.getFluidInputs()) {
-                    if (priority != 0)
-                        this.addFluidStack(stack, priority);
-                    else this.addFluidStack(stack);
-                }
-            }
-            if (handlerInfo.getItemInputs() != null) {
-                for (ItemStack stack : handlerInfo.getItemInputs()) {
-                    if (priority != 0)
-                        this.addItemStack(stack, priority);
-                    else this.addItemStack(stack);
-                }
-            }
+            for (ItemStack stack : handlerInfo.getItemInputs())
+                this.addItemStack(stack, priority);
+            for (FluidStack stack : handlerInfo.getFluidInputs())
+                this.addFluidStack(stack, priority);
         }
         return this;
     }
 
     public GUIDisplayBuilder addRecipeParallelInputLine(IParallelItemFluidHandlerInfo handlerInfo, int priority) {
-        if ((handlerInfo.getAllItemInputs() != null && !handlerInfo.getAllItemInputs().isEmpty()) || (handlerInfo.getAllFluidInputs() != null && !handlerInfo.getAllFluidInputs().isEmpty())) {
+        if (!handlerInfo.getAllItemInputs().isEmpty() || !handlerInfo.getAllFluidInputs().isEmpty()) {
             boolean areInputsEmpty = true;
-            if (handlerInfo.getAllFluidInputs() != null) {
-                for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidInputs().int2ObjectEntrySet()) {
-                    if (entry.getValue() == null) continue;
-                    if (!entry.getValue().isEmpty()) {
-                        areInputsEmpty = false;
-                        break;
-                    }
+            for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemInputs().int2ObjectEntrySet()) {
+                if (entry.getValue() == null) continue;
+                if (!entry.getValue().isEmpty()) {
+                    areInputsEmpty = false;
+                    break;
                 }
             }
-            if (handlerInfo.getAllItemInputs() != null) {
-                for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemInputs().int2ObjectEntrySet()) {
-                    if (entry.getValue() == null) continue;
-                    if (!entry.getValue().isEmpty()) {
-                        areInputsEmpty = false;
-                        break;
-                    }
+            for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidInputs().int2ObjectEntrySet()) {
+                if (entry.getValue() == null) continue;
+                if (!entry.getValue().isEmpty()) {
+                    areInputsEmpty = false;
+                    break;
                 }
             }
             if (!areInputsEmpty) {
                 if (priority != 0)
                     this.addTranslationLine(priority, "machine.universal.consumption");
                 else this.addTranslationLine("machine.universal.consumption");
-                if (handlerInfo.getAllFluidInputs() != null) {
-                    for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidInputs().int2ObjectEntrySet()) {
-                        if (entry.getValue() == null) continue;
-                        for (FluidStack stack : entry.getValue()) {
-                            if (priority != 0)
-                                this.addFluidStack(stack, priority);
-                            else this.addFluidStack(stack);
-                        }
+                for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemInputs().int2ObjectEntrySet()) {
+                    if (entry.getValue() == null) continue;
+                    for (ItemStack stack : entry.getValue()) {
+                        this.addItemStack(stack, priority);
                     }
                 }
-                if (handlerInfo.getAllItemInputs() != null) {
-                    for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemInputs().int2ObjectEntrySet()) {
-                        if (entry.getValue() == null) continue;
-                        for (ItemStack stack : entry.getValue()) {
-                            if (priority != 0)
-                                this.addItemStack(stack, priority);
-                            else this.addItemStack(stack);
-                        }
+                for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidInputs().int2ObjectEntrySet()) {
+                    if (entry.getValue() == null) continue;
+                    for (FluidStack stack : entry.getValue()) {
+                        this.addFluidStack(stack, priority);
                     }
                 }
             }
@@ -464,76 +488,54 @@ public final class GUIDisplayBuilder {
         return this;
     }
 
-    public GUIDisplayBuilder addRecipeOutputLine(IItemFluidHandlerInfo handlerInfo) {
-        return this.addRecipeOutputLine(handlerInfo, 0);
+    public GUIDisplayBuilder addRecipeOutputLine(IRecipeInfo handlerInfo) {
+        return this.addRecipeOutputLine(handlerInfo, this.count++);
     }
 
-    public GUIDisplayBuilder addRecipeOutputLine(IItemFluidHandlerInfo handlerInfo, int priority) {
-        if ((handlerInfo.getItemOutputs() != null && !handlerInfo.getItemOutputs().isEmpty()) || (handlerInfo.getFluidOutputs() != null && !handlerInfo.getFluidOutputs().isEmpty())) {
+    public GUIDisplayBuilder addRecipeOutputLine(IRecipeInfo handlerInfo, int priority) {
+        if (!handlerInfo.getItemOutputs().isEmpty() || !handlerInfo.getFluidOutputs().isEmpty()) {
             if (priority != 0)
                 this.addTranslationLine(priority, "machine.universal.producing");
             else this.addTranslationLine("machine.universal.producing");
-            if (handlerInfo.getFluidOutputs() != null) {
-                for (FluidStack stack : handlerInfo.getFluidOutputs()) {
-                    if (priority != 0)
-                        this.addFluidStack(stack, priority);
-                    else this.addFluidStack(stack);
-                }
-            }
-            if (handlerInfo.getItemOutputs() != null) {
-                for (ItemStack stack : handlerInfo.getItemOutputs()) {
-                    if (priority != 0)
-                        this.addItemStack(stack, priority);
-                    else this.addItemStack(stack);
-                }
-            }
+            for (ItemStack stack : handlerInfo.getItemOutputs())
+                this.addItemStack(stack, priority);
+            for (FluidStack stack : handlerInfo.getFluidOutputs())
+                this.addFluidStack(stack, priority);
         }
         return this;
     }
 
     public GUIDisplayBuilder addRecipeParallelOutputLine(IParallelItemFluidHandlerInfo handlerInfo, int priority) {
-        if ((handlerInfo.getAllItemOutputs() != null && !handlerInfo.getAllItemOutputs().isEmpty()) || (handlerInfo.getAllFluidOutputs() != null && !handlerInfo.getAllFluidOutputs().isEmpty())) {
+        if (!handlerInfo.getAllItemOutputs().isEmpty() || !handlerInfo.getAllFluidOutputs().isEmpty()) {
             boolean areOutputsEmpty = true;
-            if (handlerInfo.getAllFluidOutputs() != null) {
-                for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidOutputs().int2ObjectEntrySet()) {
-                    if (entry.getValue() == null) continue;
-                    if (!entry.getValue().isEmpty()) {
-                        areOutputsEmpty = false;
-                        break;
-                    }
+            for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemOutputs().int2ObjectEntrySet()) {
+                if (entry.getValue() == null) continue;
+                if (!entry.getValue().isEmpty()) {
+                    areOutputsEmpty = false;
+                    break;
                 }
             }
-            if (handlerInfo.getAllItemOutputs() != null) {
-                for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemOutputs().int2ObjectEntrySet()) {
-                    if (entry.getValue() == null) continue;
-                    if (!entry.getValue().isEmpty()) {
-                        areOutputsEmpty = false;
-                        break;
-                    }
+            for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidOutputs().int2ObjectEntrySet()) {
+                if (entry.getValue() == null) continue;
+                if (!entry.getValue().isEmpty()) {
+                    areOutputsEmpty = false;
+                    break;
                 }
             }
             if (!areOutputsEmpty) {
                 if (priority != 0)
                     this.addTranslationLine(priority, "machine.universal.producing");
                 else this.addTranslationLine("machine.universal.producing");
-                if (handlerInfo.getAllFluidOutputs() != null) {
-                    for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidOutputs().int2ObjectEntrySet()) {
-                        if (entry.getValue() == null) continue;
-                        for (FluidStack stack : entry.getValue()) {
-                            if (priority != 0)
-                                this.addFluidStack(stack, priority);
-                            else this.addFluidStack(stack);
-                        }
+                for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemOutputs().int2ObjectEntrySet()) {
+                    if (entry.getValue() == null) continue;
+                    for (ItemStack stack : entry.getValue()) {
+                        this.addItemStack(stack, priority);
                     }
                 }
-                if (handlerInfo.getAllItemOutputs() != null) {
-                    for (Int2ObjectMap.Entry<List<ItemStack>> entry : handlerInfo.getAllItemOutputs().int2ObjectEntrySet()) {
-                        if (entry.getValue() == null) continue;
-                        for (ItemStack stack : entry.getValue()) {
-                            if (priority != 0)
-                                this.addItemStack(stack, priority);
-                            else this.addItemStack(stack);
-                        }
+                for (Int2ObjectMap.Entry<List<FluidStack>> entry : handlerInfo.getAllFluidOutputs().int2ObjectEntrySet()) {
+                    if (entry.getValue() == null) continue;
+                    for (FluidStack stack : entry.getValue()) {
+                        this.addFluidStack(stack, priority);
                     }
                 }
             }
@@ -542,7 +544,7 @@ public final class GUIDisplayBuilder {
     }
 
     public GUIDisplayBuilder addRecipeOutputLine(AbstractRecipeLogic recipeLogic) {
-        return this.addRecipeOutputLine(recipeLogic, 0);
+        return this.addRecipeOutputLine(recipeLogic, this.count++);
     }
 
     public GUIDisplayBuilder addRecipeOutputLine(AbstractRecipeLogic recipeLogic, int priority) {
@@ -553,16 +555,12 @@ public final class GUIDisplayBuilder {
         else this.addTranslationLine("machine.universal.producing");
         if (((IMixinAbstractRecipeLogic) recipeLogic).getFluidOutputs() != null) {
             for (FluidStack stack : ((IMixinAbstractRecipeLogic) recipeLogic).getFluidOutputs()) {
-                if (priority != 0)
-                    this.addFluidStack(stack, priority);
-                else this.addFluidStack(stack);
+                this.addFluidStack(stack, priority);
             }
         }
         if (((IMixinAbstractRecipeLogic) recipeLogic).getItemOutputs() != null) {
             for (ItemStack stack : ((IMixinAbstractRecipeLogic) recipeLogic).getItemOutputs()) {
-                if (priority != 0)
-                    this.addItemStack(stack, priority);
-                else this.addItemStack(stack);
+                this.addItemStack(stack, priority);
             }
         }
         return this;

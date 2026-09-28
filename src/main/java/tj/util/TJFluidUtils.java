@@ -5,6 +5,8 @@ import gregtech.api.capability.impl.FluidTankList;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidTank;
 import net.minecraftforge.fluids.IFluidTank;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidTankProperties;
 
 import java.util.function.BiConsumer;
 
@@ -66,16 +68,14 @@ public final class TJFluidUtils {
         for (int i = 0; i < tanks.getTanks(); i++) {
             final IFluidTank tank = tanks.getTankAt(i);
             final FluidStack slotStack = tank.getFluid();
-            if (slotStack == null) continue;
-            if (slotStack.isFluidEqual(fluidStack)) {
+            if (fluidStack.isFluidEqual(slotStack)) {
                 final FluidStack drained = tank.drain(amount, doDrain);
                 if (drained != null) {
                     amountDrained += drained.amount;
                     amount -= amountDrained;
+                    if (amount < 1) break;
                 }
             }
-            if (amount < 1)
-                break;
         }
         return amountDrained;
     }
@@ -95,16 +95,14 @@ public final class TJFluidUtils {
         for (int i = 0; i < tanks.getTanks(); i++) {
             final IFluidTank tank = tanks.getTankAt(i);
             final FluidStack slotStack = tank.getFluid();
-            if (slotStack == null) continue;
-            if (slotStack.isFluidEqual(fluidStack)) {
+            if (fluidStack.isFluidEqual(slotStack)) {
                 final FluidStack drained = tank.drain((int) Math.min(Integer.MAX_VALUE, amount), doDrain);
                 if (drained != null) {
                     amountDrained += drained.amount;
                     amount -= amountDrained;
+                    if (amount < 1) break;
                 }
             }
-            if (amount < 1)
-                break;
         }
         return amountDrained;
     }
@@ -210,6 +208,17 @@ public final class TJFluidUtils {
         for (int i = 0; i < tanks.getTanks(); i++) {
             final IFluidTank tank = tanks.getTankAt(i);
             if (tank.getFluid() != null && tank.getFluid().isFluidEqual(fluidStack))
+                return true;
+        }
+        return false;
+    }
+
+    public static boolean isFluidPresent(IFluidHandler fluidHandler, String name) {
+        final IFluidTankProperties[] tankProperties = fluidHandler.getTankProperties();
+        for (IFluidTankProperties tankProperty : tankProperties) {
+            final FluidStack fluidStack = tankProperty.getContents();
+            if (fluidStack == null) continue;
+            if (fluidStack.getLocalizedName().contains(name))
                 return true;
         }
         return false;

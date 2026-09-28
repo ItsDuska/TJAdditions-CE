@@ -173,7 +173,7 @@ public class MetaTileEntityLargeSolarBoiler extends TJMultiblockControllerBase i
                     withHoverTextTranslate(heatEffText, "gregtech.multiblock.large_boiler.heat_efficiency.tooltip");
                     text.addTextComponent(heatEffText);
                     if (this.calcification > 0)
-                        text.addTextComponent(new TextComponentString(I18n.translateToLocalFormatted("tj.multiblock.large_solar_boiler.calcification", (this.calcification == 240000 ? Color.RED : Color.DARK_AQUA) + TJValues.thousandTwoPlaceFormat.format(this.getCalcificationPercent() * 100))));
+                        text.addTranslationLine("tj.multiblock.large_solar_boiler.calcification", (this.calcification == 500000 ? Color.RED : Color.DARK_AQUA) + TJValues.thousandTwoPlaceFormat.format(this.getCalcificationPercent() * 100));
                     if (!this.canBurn())
                         text.addTextComponent(new TextComponentTranslation("tj.multiblock.large_solar_boiler.obstructed").setStyle(new Style().setColor(TextFormatting.RED)));
                     if (!this.areSolarCollectorsValid())
@@ -326,14 +326,14 @@ public class MetaTileEntityLargeSolarBoiler extends TJMultiblockControllerBase i
     }
 
     private void readActiveBlockPacket(PacketBuffer buffer) {
-        final boolean isActive = buffer.readBoolean();
+        this.isActive = buffer.readBoolean();
         final int size = buffer.readInt();
         for (int i = 0; i < size; i++) {
             final BlockPos pos = buffer.readBlockPos();
             IBlockState state = this.getWorld().getBlockState(pos);
             final Block block = state.getBlock();
             if (block instanceof BlockFireboxCasing) {
-                state = state.withProperty(BlockFireboxCasing.ACTIVE, isActive);
+                state = state.withProperty(BlockFireboxCasing.ACTIVE, this.isActive);
                 this.getWorld().setBlockState(pos, state);
             }
         }
@@ -342,7 +342,6 @@ public class MetaTileEntityLargeSolarBoiler extends TJMultiblockControllerBase i
     private void replaceFireboxAsActive(boolean isActive) {
         this.writeCustomData(1, buffer -> this.writeActiveBlockPacket(buffer, isActive));
     }
-
 
     protected void setActive(boolean active) {
         this.isActive = active;
@@ -426,7 +425,7 @@ public class MetaTileEntityLargeSolarBoiler extends TJMultiblockControllerBase i
     }
 
     public float getCalcificationPercent() {
-        return this.calcification / (240000 * 1.00F);
+        return this.calcification / (500000 * 1.00F);
     }
 
     public float getTempPercent() {

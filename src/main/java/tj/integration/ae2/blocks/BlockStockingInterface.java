@@ -8,6 +8,8 @@ import gregtech.api.gui.ModularUI;
 import gregtech.api.gui.widgets.ImageWidget;
 import gregtech.api.gui.widgets.LabelWidget;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -17,6 +19,8 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import tj.integration.ae2.ISuperInterface;
 import tj.integration.ae2.helpers.DualitySuperInterface;
 import tj.integration.ae2.tile.TileStockingInterface;
@@ -27,12 +31,24 @@ import tj.mui.widgets.impl.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class BlockStockingInterface extends BlockInterface {
 
+    public static final DualitySuperInterface DUALITY_INSTANCE = (DualitySuperInterface) new TileStockingInterface().getInterfaceDuality();
+
     public BlockStockingInterface() {
         this.setTileEntity(TileStockingInterface.class);
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void addInformation(ItemStack is, World world, List<String> lines, ITooltipFlag advancedItemTooltips) {
+        if (DUALITY_INSTANCE != null) {
+            lines.add(I18n.format("tile.me.super_interface.storage_slots", DUALITY_INSTANCE.getStorage().getSlots()));
+            lines.add(I18n.format("tile.me.super_interface.upgrade_slots", DUALITY_INSTANCE.getInventoryByName("upgrades").getSlots()));
+        }
     }
 
     @Override
@@ -99,7 +115,8 @@ public class BlockStockingInterface extends BlockInterface {
                 .widget(new LabelWidget(7, 23, "gui.appliedenergistics2.Config"));
         for (int i = 0; i < upgradeHandler.getSlots(); i++) {
             builder.widget(new TJSlotWidget<>(upgradeHandler, i, 186, 7 + (18 * i))
-                    .setActiveBackgroundTexture(GuiTextures.SLOT, TJGuiTextures.UPGRADE_OVERLAY));
+                    .setActiveBackgroundTexture(GuiTextures.SLOT, TJGuiTextures.UPGRADE_OVERLAY)
+                    .setSlotProtection(true));
         }
         for (int i = 0; i < duality.getStorage().getSlots(); i++) {
             builder.widget(new TJSlotWidget<>(duality.getStorage(), i, 7 + (18 * (i % 9)), 52 + (36 * (i / 9)))
@@ -115,10 +132,11 @@ public class BlockStockingInterface extends BlockInterface {
                         .setCanSlide(false))
                 .widget(new LabelWidget(7, 181, "gui.appliedenergistics2.StoredItems"))
                 .widget(new LabelWidget(7, 23, "gui.appliedenergistics2.Config"))
-                .widget(new TJToggleButtonWidget(-18, 35, 16, 16, () -> duality.getConfigManager().getSetting(Settings.BLOCK).ordinal() == 0, superInterface::setAutoPull)
-                        .setToggleTooltipHoverText("tile.me.stocking_interface.auto_pull", "tile.me.stocking_interface.auto_pull")
-                        .setToggleTexture(TJGuiTextures.TOGGLE_AUTO_PULL)
-                        .useToggleTexture(true))
+                .widget(new TJToggleButtonWidget(-18, 35, 16, 16, TJGuiTextures.TOGGLE_AUTO_PULL, () -> duality.getConfigManager().getSetting(Settings.BLOCK).ordinal() == 0, superInterface::setItemAutoPull)
+                        .setToggleTooltipHoverText("tile.me.stocking_interface.auto_pull", "tile.me.stocking_interface.auto_pull"))
+                .widget(new TJToggleButtonWidget(-18, 53, 16, 16, TJGuiTextures.TOGGLE_BLOCKING_MODE, () -> duality.getConfigManager().getSetting(Settings.STICKY_MODE).ordinal() == 0, superInterface::setItemAutoPush)
+                        .setToggleTooltipHoverText("tile.me.stocking_interface.auto_push", "tile.me.stocking_interface.auto_push")
+                        .setInvertTexture(true))
                 .widget(selectionWidgetGroup)
                 .widget(buttonPopUpTickWidget.addPopup(widgetGroup -> true)
                         .addPopup(new ButtonWidget<>(132, 0, 22, 22)

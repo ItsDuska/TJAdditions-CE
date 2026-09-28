@@ -12,6 +12,7 @@ import gregtech.api.render.scene.WorldSceneRenderer;
 import gregtech.api.util.BlockInfo;
 import gregtech.api.util.Position;
 import gregtech.api.util.Size;
+import gregtech.integration.jei.multiblock.channel.PlaceholderType;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
@@ -30,7 +31,7 @@ import javax.vecmath.Vector3f;
 
 public class WorldSceneRenderWidget extends TJWidget<WorldSceneRenderWidget> {
 
-    private final WorldSceneRenderer worldSceneRenderer;
+    private WorldSceneRenderer worldSceneRenderer;
     private ItemStack tooltipBlockStack = ItemStack.EMPTY;
     private TextureArea backgroundTexture;
     private boolean isCameraFree = true;
@@ -47,10 +48,10 @@ public class WorldSceneRenderWidget extends TJWidget<WorldSceneRenderWidget> {
         super(new Position(x, y), new Size(width, height));
         final BlockPos pos = metaTileEntity.getPos();
         final MetaTileEntityHolder tileEntity = new MetaTileEntityHolder();
-        final MetaTileEntity metaTileEntity1 = tileEntity.setMetaTileEntity(metaTileEntity);
-        this.worldSceneRenderer = new WorldSceneRenderer(ImmutableMap.of(new BlockPos(0, 0, 0), new BlockInfo(metaTileEntity.getWorld().getBlockState(pos), tileEntity,null)));
+        final MetaTileEntity mte = tileEntity.setMetaTileEntity(metaTileEntity);
+        mte.setFrontFacing(metaTileEntity.getFrontFacing());
+        this.worldSceneRenderer = new WorldSceneRenderer(ImmutableMap.of(new BlockPos(0, 0, 0), new BlockInfo(metaTileEntity.getWorld().getBlockState(pos), PlaceholderType.CASING)));
         this.worldSceneRenderer.setRenderCallback(this::preRenderScene);
-        metaTileEntity1.setFrontFacing(EnumFacing.WEST);
     }
 
     public WorldSceneRenderWidget setBackgroundTexture(TextureArea backgroundTexture) {
